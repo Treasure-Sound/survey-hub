@@ -321,7 +321,10 @@ async function patchClaim(c) {
   await apiUpdate('claims', c.id, { status: c.status, ts: c.ts, confirmedat: c.confirmedAt });
 }
 async function patchSurvey(s) {
-  await apiUpdate('surveys', s.id, { confirmed: s.confirmed, status: s.status });
+  await apiUpdate('surveys', s.id, {
+    title: s.title, url: s.url, qn: s.qn, mins: s.mins, target: s.target,
+    deadline: s.deadline, confirmed: s.confirmed, status: s.status
+  });
 }
 
 function myClaim(sid) { return db.claims.find(function (c) { return c.sid === sid && c.nick === me; }); }
@@ -333,8 +336,9 @@ async function ensureUser(nick) {
   if (!db.users.includes(nick)) {
     db.users.push(nick);
     if (IS_CLOUD) await apiInsert('users', { nick: nick });
-    await addLedger(nick, 'bonus', RULE.BONUS, '新人赠点');
   }
+  const hasBonus = db.ledger.some(function (l) { return l.nick === nick && l.type === 'bonus'; });
+  if (!hasBonus) await addLedger(nick, 'bonus', RULE.BONUS, '新人赠点');
   me = nick;
   localStorage.setItem(ME_KEY, nick);
   save();
@@ -373,6 +377,44 @@ async function createSurvey(f) {
   await addLedger(me, 'post', -RULE.COST, '发布：' + s.title);
   save();
   return { ok: true, queued: s.status === 'queued' };
+}
+
+/* 修改已发布问卷的信息，不重新扣点 */
+async function updateSurvey(id, f) {
+  const s = db.surveys.find(function (x) { return x.id === id; });
+  if (!s) return { ok: false, msg: '问卷不存在' };
+  const errors = [];
+  if (!f.title || f.title.trim().length < 2) errors.push('问卷名至少 2 个字');
+  if (f.title && f.title.trim().length > 40) errors.push('问卷名不超过 40 字');
+  if (!/^https?:\/\//i.test(f.url || '')) errors.push('问卷链接必须以 http 或 https 开头');
+  const qn = Number(f.qn);
+  if (!(qn >= 1 && qn <= 20)) errors.push('题数需在 1 至 20 之间');
+  const mins = Number(f.mins);
+  if (!(mins >= 1 && mins <= 5)) errors.push('预计用时不大于 5 分钟');
+  const target = Number(f.target);
+  if (!(target >= 5 && target <= 200)) errors.push('目标份数需在 5 至 200 之间');
+  else if (target < s.confirmed) errors.push('目标份数不能少于已确认的 ' + s.confirmed + ' 份');
+  if (!f.deadline) errors.push('必须设置截止日期');
+  else if (daysLeft(f.deadline) <= 0) errors.push('截止日期必须在今天之后');
+  if (errors.length) return { ok: false, msg: errors[0] };
+
+  s.title = f.title.trim();
+  s.url = f.url.trim();
+  s.qn = qn;
+  s.mins = mins;
+  s.target = target;
+  s.deadline = f.deadline;
+  /* 原本已过期或已满员，改完之后还能继续收，就重新放回广场 */
+  if (s.status === 'expired' || s.status === 'done') {
+    if (s.confirmed >= s.target) s.status = 'done';
+    else {
+      const active = db.surveys.filter(function (x) { return x.status === 'in'; }).length;
+      s.status = active >= RULE.MAX_ACTIVE ? 'queued' : 'in';
+    }
+  }
+  if (IS_CLOUD) await patchSurvey(s);
+  save();
+  return { ok: true };
 }
 
 async function takeSurvey(sid) {
@@ -526,6 +568,8 @@ function renderMine() {
       return '<article class="q-card">' +
         '<div class="q-top"><div class="q-title">' + esc(s.title) + '</div>' + statusTag(s) + '</div>' +
         '<div class="q-meta"><span>' + s.qn + ' 题</span><span>' + s.confirmed + ' / ' + s.target + ' 份</span><span>截止 ' + esc(s.deadline) + '</span></div>' +
+        '<div class="row" style="margin-top:6px"><span class="spacer"></span>' +
+        '<button class="btn ghost sm" data-act="edit" data-sid="' + s.id + '">修改信息</button></div>' +
         (pending.length
           ? '<div class="tiny" style="margin-top:4px;color:var(--amber)">' + pending.length + ' 份待你确认</div>' + rows
           : '<div class="tiny" style="margin-top:4px">暂无待确认答卷</div>') +
@@ -699,29 +743,40 @@ function welcomeView() {
 }
 
 /* ================= 弹层 ================= */
-function openPostSheet() {
+function openPostSheet(s) {
   state.modal = 'post';
+  state.editId = s ? s.id : null;
+  const editing = !!s;
+  const v = s || { title: '', url: '', qn: 15, mins: 4, target: 30, deadline: isoPlusDays(7) };
+  const fillers = s ? db.claims.filter(function (c) {
+    return c.sid === s.id && c.status !== 'rejected' && c.status !== 'confirmed';
+  }).length : 0;
   const mask = document.createElement('div');
   mask.className = 'mask';
   mask.id = 'mask';
   mask.innerHTML =
     '<div class="sheet">' +
-    '<h3>发布我的问卷</h3>' +
-    '<p class="lead">扣 ' + RULE.COST + ' 点。当前余额 ' + pts(me) + ' 点。</p>' +
+    '<h3>' + (editing ? '修改问卷信息' : '发布我的问卷') + '</h3>' +
+    '<p class="lead">' + (editing
+      ? '改的是已经发出去的那一份，不会重新扣点。'
+      : '扣 ' + RULE.COST + ' 点。当前余额 ' + pts(me) + ' 点。') + '</p>' +
+    (editing && fillers > 0
+      ? '<p class="hint" style="color:var(--amber)">已经有 ' + fillers + ' 人在填，改链接或题数他们可能填错。</p>'
+      : '') +
     '<div class="err" id="formErr"></div>' +
-    '<div class="field"><label>问卷名</label><input id="fTitle" type="text" maxlength="40" placeholder="例如：大学生短视频使用与睡眠调查"></div>' +
-    '<div class="field"><label>问卷链接<span>腾讯问卷、问卷星、金数据都行</span></label><input id="fUrl" type="url" placeholder="https://"></div>' +
+    '<div class="field"><label>问卷名</label><input id="fTitle" type="text" maxlength="40" placeholder="例如：大学生短视频使用与睡眠调查" value="' + esc(v.title) + '"></div>' +
+    '<div class="field"><label>问卷链接<span>腾讯问卷、问卷星、金数据都行</span></label><input id="fUrl" type="url" placeholder="https://" value="' + esc(v.url) + '"></div>' +
     '<div class="grid2">' +
-    '<div class="field"><label>题数<span>最多 20</span></label><input id="fQn" type="number" min="1" max="20" value="15"></div>' +
-    '<div class="field"><label>预计用时<span>分钟，最多 5</span></label><input id="fMins" type="number" min="1" max="5" value="4"></div>' +
+    '<div class="field"><label>题数<span>最多 20</span></label><input id="fQn" type="number" min="1" max="20" value="' + v.qn + '"></div>' +
+    '<div class="field"><label>预计用时<span>分钟，最多 5</span></label><input id="fMins" type="number" min="1" max="5" value="' + v.mins + '"></div>' +
     '</div>' +
     '<div class="grid2">' +
-    '<div class="field"><label>目标份数</label><input id="fTarget" type="number" min="5" max="200" value="30"></div>' +
-    '<div class="field"><label>截止日期</label><input id="fDeadline" type="date" value="' + isoPlusDays(7) + '"></div>' +
+    '<div class="field"><label>目标份数</label><input id="fTarget" type="number" min="5" max="200" value="' + v.target + '"></div>' +
+    '<div class="field"><label>截止日期</label><input id="fDeadline" type="date" value="' + esc(v.deadline) + '"></div>' +
     '</div>' +
     '<p class="hint">不受理：超过 20 题、超过 5 分钟、没有截止日期的问卷。发布后由你逐份确认答卷是否有效。</p>' +
     '<div class="row" style="margin-top:16px"><button class="btn ghost" data-act="close-modal">取消</button>' +
-    '<span class="spacer"></span><button class="btn warn" data-act="submit-post">确认发布</button></div>' +
+    '<span class="spacer"></span><button class="btn warn" data-act="submit-post">' + (editing ? '保存修改' : '确认发布') + '</button></div>' +
     '</div>';
   document.body.appendChild(mask);
   const t = document.getElementById('fTitle');
@@ -732,6 +787,7 @@ function closeModal() {
   const m = document.getElementById('mask');
   if (m) m.remove();
   state.modal = null;
+  state.editId = null;
 }
 
 /* ================= 提示 ================= */
@@ -781,6 +837,13 @@ document.addEventListener('click', async function (e) {
     return;
   }
   if (act === 'close-modal') { closeModal(); return; }
+  if (act === 'edit') {
+    const s = db.surveys.find(function (x) { return x.id === el.getAttribute('data-sid'); });
+    if (!s) { toast('问卷不存在'); return; }
+    if (s.owner !== me) { toast('只能改自己发布的问卷'); return; }
+    openPostSheet(s);
+    return;
+  }
   if (act === 'submit-post') {
     const f = {
       title: document.getElementById('fTitle').value,
@@ -790,6 +853,20 @@ document.addEventListener('click', async function (e) {
       target: document.getElementById('fTarget').value,
       deadline: document.getElementById('fDeadline').value
     };
+    if (state.editId) {
+      const r = await run(function () { return updateSurvey(state.editId, f); });
+      if (!r) return;
+      if (!r.ok) {
+        const err = document.getElementById('formErr');
+        err.textContent = r.msg;
+        err.classList.add('on');
+        return;
+      }
+      closeModal();
+      toast('已保存修改');
+      render();
+      return;
+    }
     const r = await run(function () { return createSurvey(f); });
     if (!r) return;
     if (!r.ok) {
@@ -883,6 +960,9 @@ document.addEventListener('keydown', function (e) {
     if (me && db.users.indexOf(me) < 0) {
       me = null;
       localStorage.removeItem(ME_KEY);
+    } else if (me && !db.ledger.some(function (l) { return l.nick === me && l.type === 'bonus'; })) {
+      /* 昵称在云端但没有赠点记录，补一条，避免余额显示 0 */
+      try { await addLedger(me, 'bonus', RULE.BONUS, '新人赠点'); } catch (e) {}
     }
   }
   render();
