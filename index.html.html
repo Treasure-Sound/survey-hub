@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>问卷台 · 校园问卷互助</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2316273d'/%3E%3Cpath d='M9 10h14M9 16h14M9 22h8' stroke='%23c8873f' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+:root{
+  --ink:#16273d;
+  --ink-2:#2c4059;
+  --paper:#f4f2ec;
+  --card:#fffdf9;
+  --line:#dcd7cb;
+  --line-2:#c7c0b0;
+  --amber:#c8873f;
+  --amber-soft:#f2e3ce;
+  --muted:#6f756f;
+  --ok:#3f6b4f;
+  --warn:#9a4b32;
+  --r:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--paper);color:var(--ink);
+  font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 96px}
+
+/* ===== 顶栏 ===== */
+.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#f4f2ec;padding:12px 0 0}
+.top-in{max-width:760px;margin:0 auto;padding:0 16px}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:9px;font-size:16px;letter-spacing:.06em;font-weight:600}
+.brand-mark{width:22px;height:22px;flex:0 0 22px}
+.me{display:flex;align-items:center;gap:10px;min-width:0}
+.me-nick{font-size:14px;color:#d9d3c4;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pts{
+  font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;
+  background:var(--amber);color:#241a0c;padding:3px 9px;border-radius:4px;letter-spacing:.02em;white-space:nowrap
+}
+.pts small{font-weight:500;font-size:11px;opacity:.75;margin-left:2px}
+.tabs{display:flex;gap:0;margin-top:12px}
+.tab{
+  flex:1;background:none;border:0;border-bottom:2px solid transparent;
+  color:#a8b2bd;font-size:14px;padding:10px 0;cursor:pointer;font-family:inherit;letter-spacing:.04em
+}
+.tab.on{color:#fff;border-bottom-color:var(--amber)}
+
+/* ===== 通用 ===== */
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 10px;gap:10px}
+.sec-title h2{font-size:15px;letter-spacing:.05em;font-weight:600}
+.sec-title .sub{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.row{display:flex;align-items:center;gap:8px}
+.spacer{flex:1}
+.btn{
+  font-family:inherit;font-size:14px;border:1px solid var(--ink);background:var(--ink);color:#f4f2ec;
+  padding:9px 16px;border-radius:4px;cursor:pointer;letter-spacing:.03em;min-height:40px
+}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:disabled{color:#9aa0a0;border-color:var(--line-2);cursor:not-allowed}
+.btn.warn{background:var(--amber);border-color:var(--amber);color:#241a0c;font-weight:600}
+.btn.sm{padding:6px 12px;font-size:13px;min-height:34px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:3px;letter-spacing:.04em;white-space:nowrap}
+.tag.in{background:#e4efe6;color:var(--ok)}
+.tag.queued{background:#f0eade;color:#8a6a2f}
+.tag.done{background:#e8e6e0;color:#5d625d}
+.tag.expired{background:#f3e2dd;color:var(--warn)}
+.tag.pending{background:#f0e8dc;color:#8a6a2f}
+.muted{color:var(--muted);font-size:13px}
+.tiny{font-size:12px;color:var(--muted)}
+.empty{border:1px dashed var(--line-2);border-radius:var(--r);padding:34px 18px;text-align:center;color:var(--muted);font-size:14px;background:rgba(255,255,255,.35)}
+hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+
+/* ===== 问卷卡 ===== */
+.q-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.q-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.q-title{font-size:15.5px;font-weight:600;line-height:1.4;flex:1;min-width:0;word-break:break-word}
+.q-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:10px}
+.q-meta span{white-space:nowrap}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:6px}
+.bar i{display:block;height:100%;background:var(--ink-2);width:0}
+.bar.done i{background:var(--ok)}
+.bar-foot{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.q-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.q-actions .btn{flex:1 1 auto}
+
+/* ===== 点数榜 ===== */
+.rank{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.rank-item{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:4px;padding:7px 11px;font-size:13px;display:flex;align-items:center;gap:7px}
+.rank-item b{font-variant-numeric:tabular-nums;color:var(--amber)}
+
+/* ===== 看板 ===== */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (min-width:560px){.kpis{grid-template-columns:repeat(4,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.kpi .k{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.kpi .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px;letter-spacing:-.01em}
+.kpi .v small{font-size:12px;font-weight:500;color:var(--muted);margin-left:2px}
+.chart{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.chart h3{font-size:13px;font-weight:600;letter-spacing:.04em;margin-bottom:2px}
+.chart .cap{font-size:12px;color:var(--muted);margin-bottom:12px}
+svg.chart-svg{display:block;width:100%;height:auto}
+
+/* ===== 弹层 ===== */
+.mask{position:fixed;inset:0;background:rgba(22,39,61,.55);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:600px){.mask{align-items:center}}
+.sheet{background:var(--paper);width:100%;max-width:560px;border-radius:10px 10px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto}
+@media (min-width:600px){.sheet{border-radius:10px}}
+.sheet h3{font-size:16px;margin-bottom:2px;letter-spacing:.03em}
+.sheet .lead{font-size:13px;color:var(--muted);margin-bottom:16px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:13px;margin-bottom:5px;letter-spacing:.03em}
+.field label span{color:var(--muted);font-size:12px;margin-left:4px}
+.field input,.field select,.field textarea{
+  width:100%;font-family:inherit;font-size:16px;padding:10px 11px;border:1px solid var(--line-2);
+  border-radius:4px;background:#fff;color:var(--ink)
+}
+.field input:focus,.field textarea:focus{outline:2px solid var(--amber-soft);border-color:var(--amber)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.err{font-size:13px;color:var(--warn);background:#f7e8e2;border-radius:4px;padding:9px 11px;margin-bottom:12px;display:none}
+.err.on{display:block}
+
+/* ===== 底部发布条 ===== */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--paper) 62%,rgba(244,242,236,0))}
+.dock-in{max-width:760px;margin:0 auto}
+.dock .btn.full{width:100%;padding:13px;font-size:15px;letter-spacing:.06em}
+
+/* ===== 流水 ===== */
+.ledger li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;list-style:none}
+.ledger li:last-child{border-bottom:0}
+.ledger .d{font-variant-numeric:tabular-nums;font-weight:600;width:38px;text-align:right;flex:0 0 38px}
+.ledger .d.pos{color:var(--ok)}
+.ledger .d.neg{color:var(--warn)}
+.ledger .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ledger .t{font-size:11.5px;color:var(--muted);white-space:nowrap}
+
+.toast{
+  position:fixed;left:50%;bottom:96px;transform:translate(-50%,10px);background:var(--ink);color:#f4f2ec;
+  font-size:13.5px;padding:10px 16px;border-radius:5px;z-index:60;opacity:0;pointer-events:none;
+  transition:opacity .18s,transform .18s;max-width:88vw;text-align:center
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brandrow">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="4" fill="#1b304b"/><path d="M9 10h14M9 16h14M9 22h8" stroke="#c8873f" stroke-width="2"/></svg>
+        <span>问卷台</span>
+      </div>
+      <div class="me">
+        <span class="me-nick" id="nickLabel">未设置</span>
+        <span class="pts" id="ptsLabel">0<small>点</small></span>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab" data-act="view" data-v="square">问卷广场</button>
+      <button class="tab" data-act="view" data-v="mine">我的</button>
+      <button class="tab" data-act="view" data-v="board">看板</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="view-root"></main>
+
+<div class="dock" id="dock">
+  <div class="dock-in">
+    <button class="btn warn full" data-act="open-post">发布我的问卷 · 扣 10 点</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 配置与数据层 ================= */
+const KEY = 'wenjuantai_v1';
+const ME_KEY = 'wenjuantai_me';
+const RULE = { BONUS: 10, COST: 10, REWARD: 1, MAX_ACTIVE: 2, PASS: 'Qu2025ssll' };
+
+/* ==================================================================
+   云端模式开关
+   1) 去 supabase.com 注册，新建一个免费项目
+   2) 项目里 Settings → API，复制 Project URL 和 anon public key
+   3) 把下面两行填上，再把网页放到 GitHub Pages
+   留空则继续使用本机演示模式（数据只在这台电脑的浏览器里）
+   ================================================================== */
+const CLOUD = { url: 'https://tinfzpoxejbinvrcnsxg.supabase.co', anonKey: 'sb_publishable_8Sk-3p6EThlPk7F_Mlcwkw_dU2bM7eU' };
+const IS_CLOUD = !!(CLOUD.url && CLOUD.anonKey);
+
+function blankDB() { return { users: [], surveys: [], claims: [], ledger: [] }; }
+function load() {
+  try {
+    const s = localStorage.getItem(KEY);
+    if (!s) return blankDB();
+    const o = JSON.parse(s);
+    return Object.assign(blankDB(), o);
+  } catch (e) { return blankDB(); }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
+
+let db = load();
+let me = localStorage.getItem(ME_KEY) || '';
+let state = { view: 'square', boardOpen: false, modal: null };
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function nowTs() { return Date.now(); }
+function pts(nick) { return db.ledger.filter(l => l.nick === nick).reduce((a, b) => a + b.delta, 0); }
+async function addLedger(nick, type, delta, note) {
+  const row = { id: uid(), nick: nick, type: type, delta: delta, note: note, ts: nowTs() };
+  db.ledger.push(row);
+  if (IS_CLOUD) await apiInsert('ledger', row);
+}
+function fmtDate(ts) { const d = new Date(ts); return (d.getMonth() + 1) + '/' + d.getDate(); }
+function daysLeft(deadline) {
+  const end = new Date(deadline + 'T23:59:59').getTime();
+  const diff = end - Date.now();
+  if (diff <= 0) return 0;
+  return Math.ceil(diff / 86400000);
+}
+function isoPlusDays(n) {
+  const d = new Date(Date.now() + n * 86400000);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* 状态归一：过期、满员、排队晋升 */
+function normalize() {
+  const now = Date.now();
+  db.surveys.forEach(function (s) {
+    if (s.status === 'in' || s.status === 'queued') {
+      if (new Date(s.deadline + 'T23:59:59').getTime() < now) s.status = 'expired';
+      else if (s.confirmed >= s.target) s.status = 'done';
+    }
+  });
+  let active = db.surveys.filter(function (s) { return s.status === 'in'; }).length;
+  while (active < RULE.MAX_ACTIVE) {
+    const q = db.surveys.filter(function (s) { return s.status === 'queued'; })
+      .sort(function (a, b) { return a.createdAt - b.createdAt; })[0];
+    if (!q) break;
+    q.status = 'in';
+    active++;
+  }
+}
+
+/* ================= 云端读写 ================= */
+function baseUrl() { return CLOUD.url.replace(/\/+$/, ''); }
+function apiHeaders() {
+  const h = { apikey: CLOUD.anonKey, 'Content-Type': 'application/json' };
+  /* 旧版 anon key 是 JWT（eyJ 开头），需要再带一个 Authorization；
+     新版 publishable key（sb_publishable_ 开头）只走 apikey 头即可 */
+  if (CLOUD.anonKey.indexOf('eyJ') === 0) h.Authorization = 'Bearer ' + CLOUD.anonKey;
+  return h;
+}
+async function apiGet(table) {
+  const res = await fetch(baseUrl() + '/rest/v1/' + table + '?select=*', { headers: apiHeaders() });
+  if (!res.ok) throw new Error('读取 ' + table + ' 失败（' + res.status + '）');
+  return res.json();
+}
+async function apiInsert(table, row) {
+  const res = await fetch(baseUrl() + '/rest/v1/' + table, {
+    method: 'POST',
+    headers: Object.assign({ Prefer: 'return=minimal' }, apiHeaders()),
+    body: JSON.stringify(row)
+  });
+  if (!res.ok) throw new Error('写入 ' + table + ' 失败（' + res.status + '）');
+}
+async function apiUpdate(table, id, patch) {
+  const res = await fetch(baseUrl() + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: Object.assign({ Prefer: 'return=minimal' }, apiHeaders()),
+    body: JSON.stringify(patch)
+  });
+  if (!res.ok) throw new Error('更新 ' + table + ' 失败（' + res.status + '）');
+}
+
+async function loadCloud() {
+  const [users, surveys, claims, ledger] = await Promise.all([
+    apiGet('users'), apiGet('surveys'), apiGet('claims'), apiGet('ledger')
+  ]);
+  db.users = users.map(function (u) { return u.nick; });
+  db.surveys = surveys.map(function (s) {
+    return {
+      id: s.id, title: s.title, url: s.url, qn: s.qn, mins: s.mins, target: s.target,
+      deadline: s.deadline, owner: s.owner, confirmed: s.confirmed, status: s.status,
+      createdAt: Number(s.createdat)
+    };
+  });
+  db.claims = claims.map(function (c) {
+    return { id: c.id, sid: c.sid, nick: c.nick, status: c.status, ts: Number(c.ts), confirmedAt: c.confirmedat ? Number(c.confirmedat) : null };
+  });
+  db.ledger = ledger.map(function (l) {
+    return { id: l.id, nick: l.nick, type: l.type, delta: l.delta, note: l.note, ts: Number(l.ts) };
+  });
+}
+async function pushSurvey(s) {
+  await apiInsert('surveys', {
+    id: s.id, title: s.title, url: s.url, qn: s.qn, mins: s.mins, target: s.target,
+    deadline: s.deadline, owner: s.owner, confirmed: s.confirmed, status: s.status,
+    createdat: s.createdAt
+  });
+}
+async function pushClaim(c) {
+  await apiInsert('claims', { id: c.id, sid: c.sid, nick: c.nick, status: c.status, ts: c.ts, confirmedat: c.confirmedAt });
+}
+async function patchClaim(c) {
+  await apiUpdate('claims', c.id, { status: c.status, ts: c.ts, confirmedat: c.confirmedAt });
+}
+async function patchSurvey(s) {
+  await apiUpdate('surveys', s.id, { confirmed: s.confirmed, status: s.status });
+}
+
+function myClaim(sid) { return db.claims.find(function (c) { return c.sid === sid && c.nick === me; }); }
+
+/* ================= 业务动作 ================= */
+async function ensureUser(nick) {
+  nick = (nick || '').trim();
+  if (!nick) return { ok: false, msg: '昵称不能为空' };
+  if (!db.users.includes(nick)) {
+    db.users.push(nick);
+    if (IS_CLOUD) await apiInsert('users', { nick: nick });
+    await addLedger(nick, 'bonus', RULE.BONUS, '新人赠点');
+  }
+  me = nick;
+  localStorage.setItem(ME_KEY, nick);
+  save();
+  return { ok: true };
+}
+
+async function createSurvey(f) {
+  const errors = [];
+  if (!f.title || f.title.trim().length < 2) errors.push('问卷名至少 2 个字');
+  if (f.title && f.title.trim().length > 40) errors.push('问卷名不超过 40 字');
+  if (!/^https?:\/\//i.test(f.url || '')) errors.push('问卷链接必须以 http 或 https 开头');
+  const qn = Number(f.qn);
+  if (!(qn >= 1 && qn <= 20)) errors.push('题数需在 1 至 20 之间，超过 20 题不受理');
+  const mins = Number(f.mins);
+  if (!(mins >= 1 && mins <= 5)) errors.push('预计用时不大于 5 分钟');
+  const target = Number(f.target);
+  if (!(target >= 5 && target <= 200)) errors.push('目标份数需在 5 至 200 之间');
+  if (!f.deadline) errors.push('必须设置截止日期');
+  else if (daysLeft(f.deadline) <= 0) errors.push('截止日期必须在今天之后');
+  if (errors.length) return { ok: false, msg: errors[0] };
+
+  if (pts(me) < RULE.COST) {
+    const need = Math.ceil((RULE.COST - pts(me)) / RULE.REWARD);
+    return { ok: false, msg: '点数不足，还需 ' + need + ' 份有效答卷才能发布' };
+  }
+
+  const activeNow = db.surveys.filter(function (s) { return s.status === 'in'; }).length;
+  const s = {
+    id: uid(), title: f.title.trim(), url: f.url.trim(), qn: qn, mins: mins,
+    target: target, deadline: f.deadline, owner: me, confirmed: 0,
+    status: activeNow >= RULE.MAX_ACTIVE ? 'queued' : 'in',
+    createdAt: nowTs()
+  };
+  db.surveys.push(s);
+  if (IS_CLOUD) await pushSurvey(s);
+  await addLedger(me, 'post', -RULE.COST, '发布：' + s.title);
+  save();
+  return { ok: true, queued: s.status === 'queued' };
+}
+
+async function takeSurvey(sid) {
+  const s = db.surveys.find(function (x) { return x.id === sid; });
+  if (!s) return { ok: false, msg: '问卷不存在' };
+  if (s.status !== 'in') return { ok: false, msg: '这份问卷当前不可认领' };
+  if (s.owner === me) return { ok: false, msg: '这是你自己发布的问卷' };
+  if (myClaim(sid)) return { ok: false, msg: '你已经认领过这份问卷' };
+  const openClaims = db.claims.filter(function (c) {
+    return c.nick === me && (c.status === 'claimed' || c.status === 'pending');
+  });
+  if (openClaims.length >= 2) return { ok: false, msg: '你还有没填完的认领，先填完再来' };
+  const c = { id: uid(), sid: sid, nick: me, status: 'claimed', ts: nowTs(), confirmedAt: null };
+  db.claims.push(c);
+  if (IS_CLOUD) await pushClaim(c);
+  save();
+  return { ok: true, url: s.url };
+}
+
+async function markFilled(sid) {
+  const c = myClaim(sid);
+  if (!c || c.status !== 'claimed') return { ok: false, msg: '状态异常' };
+  c.status = 'pending';
+  c.ts = nowTs();
+  if (IS_CLOUD) await patchClaim(c);
+  save();
+  return { ok: true };
+}
+
+async function confirmClaim(cid) {
+  const c = db.claims.find(function (x) { return x.id === cid; });
+  if (!c) return { ok: false, msg: '认领记录不存在' };
+  const s = db.surveys.find(function (x) { return x.id === c.sid; });
+  if (!s || s.owner !== me) return { ok: false, msg: '只有发布方可以确认' };
+  if (c.status !== 'pending') return { ok: false, msg: '该认领不在待确认状态' };
+  c.status = 'confirmed';
+  c.confirmedAt = nowTs();
+  s.confirmed = db.claims.filter(function (x) { return x.sid === s.id && x.status === 'confirmed'; }).length;
+  if (s.confirmed >= s.target) s.status = 'done';
+  normalize();
+  if (IS_CLOUD) { await patchClaim(c); await patchSurvey(s); }
+  await addLedger(c.nick, 'fill', RULE.REWARD, '完成：' + s.title);
+  save();
+  return { ok: true, nick: c.nick };
+}
+
+async function rejectClaim(cid) {
+  const c = db.claims.find(function (x) { return x.id === cid; });
+  if (!c) return { ok: false, msg: '记录不存在' };
+  const s = db.surveys.find(function (x) { return x.id === c.sid; });
+  if (!s || s.owner !== me) return { ok: false, msg: '只有发布方可以操作' };
+  c.status = 'rejected';
+  if (IS_CLOUD) await patchClaim(c);
+  save();
+  return { ok: true };
+}
+
+/* ================= 渲染：广场 ================= */
+function statusTag(s) {
+  const map = {
+    in: ['in', '在收'], queued: ['queued', '排队中'],
+    done: ['done', '已满'], expired: ['expired', '已截止']
+  };
+  const m = map[s.status] || ['done', s.status];
+  return '<span class="tag ' + m[0] + '">' + m[1] + '</span>';
+}
+
+function cardForSurvey(s) {
+  const pct = s.target ? Math.min(100, Math.round(s.confirmed / s.target * 100)) : 0;
+  const dl = daysLeft(s.deadline);
+  const mine = myClaim(s.id);
+  let action = '';
+  if (s.owner === me) {
+    action = '<div class="q-actions"><span class="tiny">你发布的问卷，去「我的」里确认答卷</span></div>';
+  } else if (mine && mine.status === 'confirmed') {
+    action = '<div class="q-actions"><span class="tiny">已确认有效，+1 点已到账</span></div>';
+  } else if (mine && mine.status === 'pending') {
+    action = '<div class="q-actions"><span class="tiny">已提交，等待发布方确认</span></div>';
+  } else if (mine && mine.status === 'claimed') {
+    action = '<div class="q-actions">' +
+      '<a class="btn ghost sm" href="' + esc(s.url) + '" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">打开问卷填写</a>' +
+      '<button class="btn sm" data-act="filled" data-sid="' + s.id + '">我已填完，提交确认</button></div>';
+  } else if (s.status === 'in') {
+    action = '<div class="q-actions"><button class="btn sm" data-act="take" data-sid="' + s.id + '">接下这份，填完得 1 点</button></div>';
+  } else if (s.status === 'queued') {
+    action = '<div class="q-actions"><span class="tiny">排队中，开位后可认领</span></div>';
+  } else {
+    action = '<div class="q-actions"><span class="tiny">已结束，不再接收答卷</span></div>';
+  }
+  return '<article class="q-card">' +
+    '<div class="q-top"><div class="q-title">' + esc(s.title) + '</div>' + statusTag(s) + '</div>' +
+    '<div class="q-meta">' +
+      '<span>' + s.qn + ' 题</span>' +
+      '<span>约 ' + s.mins + ' 分钟</span>' +
+      '<span>发布人 ' + esc(s.owner) + '</span>' +
+      '<span>' + (dl > 0 ? '剩 ' + dl + ' 天' : '今日截止') + '</span>' +
+    '</div>' +
+    '<div class="bar' + (pct >= 100 ? ' done' : '') + '"><i style="width:' + pct + '%"></i></div>' +
+    '<div class="bar-foot"><span>' + s.confirmed + ' / ' + s.target + ' 份有效</span><span>' + pct + '%</span></div>' +
+    action +
+    '</article>';
+}
+
+function renderSquare() {
+  const active = db.surveys.filter(function (s) { return s.status === 'in'; });
+  const queued = db.surveys.filter(function (s) { return s.status === 'queued'; });
+  const ended = db.surveys.filter(function (s) { return s.status === 'done' || s.status === 'expired'; });
+
+  const rank = db.users.slice().sort(function (a, b) { return pts(b) - pts(a); }).slice(0, 6);
+  let html = '';
+  if (rank.length) {
+    html += '<div class="sec-title"><h2>点数榜</h2><span class="sub">填得越多，越能发</span></div>';
+    html += '<div class="rank">' + rank.map(function (n, i) {
+      return '<div class="rank-item">' + (i + 1) + '. ' + esc(n) + ' <b>' + pts(n) + '</b> 点</div>';
+    }).join('') + '</div>';
+  }
+
+  html += '<div class="sec-title"><h2>正在收</h2><span class="sub">同时最多 ' + RULE.MAX_ACTIVE + ' 份</span></div>';
+  html += active.length ? active.map(cardForSurvey).join('')
+    : '<div class="empty">暂时没有在收的问卷。你发布一份，位子就开出来了。</div>';
+
+  if (queued.length) {
+    html += '<div class="sec-title"><h2>排队中</h2><span class="sub">' + queued.length + ' 份</span></div>';
+    html += queued.map(cardForSurvey).join('');
+  }
+  if (ended.length) {
+    html += '<div class="sec-title"><h2>已结束</h2><span class="sub">' + ended.length + ' 份</span></div>';
+    html += ended.slice(0, 6).map(cardForSurvey).join('');
+  }
+  return html;
+}
+
+/* ================= 渲染：我的 ================= */
+function renderMine() {
+  const myPosts = db.surveys.filter(function (s) { return s.owner === me; }).sort(function (a, b) { return b.createdAt - a.createdAt; });
+  const myClaims = db.claims.filter(function (c) { return c.nick === me; }).sort(function (a, b) { return b.ts - a.ts; });
+  const myLedger = db.ledger.filter(function (l) { return l.nick === me; }).sort(function (a, b) { return b.ts - a.ts; });
+
+  let html = '<div class="sec-title"><h2>我发布的问卷</h2><span class="sub">' + myPosts.length + ' 份</span></div>';
+  if (!myPosts.length) {
+    html += '<div class="empty">还没发布过。先去填几份攒点，再发自己的。</div>';
+  } else {
+    html += myPosts.map(function (s) {
+      const pending = db.claims.filter(function (c) { return c.sid === s.id && c.status === 'pending'; });
+      const rows = pending.map(function (c) {
+        return '<div class="row" style="padding:7px 0;border-top:1px solid var(--line)">' +
+          '<span style="font-size:13.5px">' + esc(c.nick) + ' 提交了答卷</span><span class="spacer"></span>' +
+          '<button class="btn ghost sm" data-act="reject" data-cid="' + c.id + '">判无效</button>' +
+          '<button class="btn sm" data-act="confirm" data-cid="' + c.id + '">确认有效</button></div>';
+      }).join('');
+      return '<article class="q-card">' +
+        '<div class="q-top"><div class="q-title">' + esc(s.title) + '</div>' + statusTag(s) + '</div>' +
+        '<div class="q-meta"><span>' + s.qn + ' 题</span><span>' + s.confirmed + ' / ' + s.target + ' 份</span><span>截止 ' + esc(s.deadline) + '</span></div>' +
+        (pending.length
+          ? '<div class="tiny" style="margin-top:4px;color:var(--amber)">' + pending.length + ' 份待你确认</div>' + rows
+          : '<div class="tiny" style="margin-top:4px">暂无待确认答卷</div>') +
+        '</article>';
+    }).join('');
+  }
+
+  html += '<div class="sec-title"><h2>我的认领</h2><span class="sub">' + myClaims.length + ' 条</span></div>';
+  if (!myClaims.length) {
+    html += '<div class="empty">还没认领过问卷。去广场接一份，填完 +1 点。</div>';
+  } else {
+    html += '<div class="card"><ul class="ledger">' + myClaims.slice(0, 10).map(function (c) {
+      const s = db.surveys.find(function (x) { return x.id === c.sid; });
+      let label = '已认领未提交';
+      if (c.status === 'confirmed') label = '已确认 +1';
+      else if (c.status === 'pending') label = '待发布方确认';
+      else if (c.status === 'rejected') label = '被判无效';
+      const cls = c.status === 'confirmed' ? 'pos' : (c.status === 'claimed' ? 'neg' : '');
+      return '<li><span class="d ' + cls + '">' + (c.status === 'confirmed' ? '+1' : '—') + '</span>' +
+        '<span class="n">' + esc(s ? s.title : '已删除问卷') + '</span>' +
+        '<span class="t">' + label + '</span></li>';
+    }).join('') + '</ul></div>';
+  }
+
+  html += '<div class="sec-title"><h2>点数流水</h2><span class="sub">余额 ' + pts(me) + ' 点</span></div>';
+  html += '<div class="card"><ul class="ledger">' + (myLedger.length
+    ? myLedger.slice(0, 20).map(function (l) {
+        return '<li><span class="d ' + (l.delta > 0 ? 'pos' : 'neg') + '">' + (l.delta > 0 ? '+' : '') + l.delta + '</span>' +
+          '<span class="n">' + esc(l.note) + '</span><span class="t">' + fmtDate(l.ts) + '</span></li>';
+      }).join('')
+    : '<li><span class="n">暂无记录</span></li>') + '</ul></div>';
+
+  return html;
+}
+
+/* ================= 渲染：看板 ================= */
+function buildDailySeries(days) {
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - i);
+    const start = d.getTime();
+    const end = start + 86400000;
+    out.push({
+      label: (d.getMonth() + 1) + '/' + d.getDate(),
+      count: db.claims.filter(function (c) {
+        return c.status === 'confirmed' && c.confirmedAt && c.confirmedAt >= start && c.confirmedAt < end;
+      }).length
+    });
+  }
+  return out;
+}
+
+function barChart(series) {
+  const W = 340, H = 132, padL = 6, padR = 6, padT = 10, padB = 22;
+  const max = Math.max.apply(null, series.map(function (s) { return s.count; })) || 1;
+  const iw = (W - padL - padR) / series.length;
+  const bw = Math.max(8, Math.min(26, iw - 10));
+  let bars = '', labels = '', vals = '';
+  series.forEach(function (s, i) {
+    const h = (H - padT - padB) * (s.count / max);
+    const x = padL + i * iw + (iw - bw) / 2;
+    const y = H - padB - h;
+    bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw +
+      '" height="' + Math.max(1.5, h).toFixed(1) + '" fill="#2c4059"></rect>';
+    labels += '<text x="' + (padL + i * iw + iw / 2).toFixed(1) + '" y="' + (H - 6) +
+      '" font-size="9" fill="#7c827c" text-anchor="middle">' + s.label + '</text>';
+    if (s.count > 0) {
+      vals += '<text x="' + (padL + i * iw + iw / 2).toFixed(1) + '" y="' + (y - 3).toFixed(1) +
+        '" font-size="9.5" fill="#16273d" text-anchor="middle">' + s.count + '</text>';
+    }
+  });
+  return '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="近七日有效答卷">' +
+    '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="#dcd7cb"></line>' +
+    bars + labels + vals + '</svg>';
+}
+
+function renderBoard() {
+  if (!state.boardOpen) {
+    return '<div class="sec-title"><h2>仅我可见</h2><span class="sub">发布方数据分析</span></div>' +
+      '<div class="card">' +
+      '<p class="muted" style="margin-bottom:12px">看板只给运营者看。输入管理口令解锁。</p>' +
+      '<div class="field"><label>管理口令</label><input id="passInput" type="password" autocomplete="off" placeholder="输入口令"></div>' +
+      '<div class="err" id="passErr">口令不对</div>' +
+      '<button class="btn" data-act="unlock">解锁看板</button>' +
+      '</div>';
+  }
+
+  const published = db.surveys.length;
+  const allClaims = db.claims.length;
+  const confirmed = db.claims.filter(function (c) { return c.status === 'confirmed'; }).length;
+  const validRate = allClaims ? Math.round(confirmed / allClaims * 100) : 0;
+
+  let avgHours = '—';
+  const doneSurveys = db.surveys.filter(function (s) { return s.status === 'done'; });
+  if (doneSurveys.length) {
+    const arr = doneSurveys.map(function (s) {
+      const last = db.claims.filter(function (c) { return c.sid === s.id && c.status === 'confirmed'; })
+        .map(function (c) { return c.confirmedAt; });
+      return last.length ? (Math.max.apply(null, last) - s.createdAt) / 3600000 : null;
+    }).filter(function (x) { return x != null; });
+    if (arr.length) avgHours = (arr.reduce(function (a, b) { return a + b; }, 0) / arr.length).toFixed(1);
+  }
+
+  const series = buildDailySeries(7);
+
+  let html = '<div class="sec-title"><h2>运营看板</h2><span class="sub">本地演示数据</span></div>';
+  html += '<div class="kpis">' +
+    '<div class="kpi"><div class="k">累计发布</div><div class="v">' + published + '<small>份</small></div></div>' +
+    '<div class="kpi"><div class="k">有效答卷</div><div class="v">' + confirmed + '<small>份</small></div></div>' +
+    '<div class="kpi"><div class="k">有效率</div><div class="v">' + validRate + '<small>%</small></div></div>' +
+    '<div class="kpi"><div class="k">满员用时</div><div class="v">' + avgHours +
+      '<small>' + (avgHours === '—' ? '' : '小时') + '</small></div></div>' +
+    '</div>';
+
+  html += '<div class="chart"><h3>近七日有效答卷</h3>' +
+    '<p class="cap">按确认有效的日期统计，共 ' + confirmed + ' 份</p>' +
+    barChart(series) + '</div>';
+
+  html += '<div class="sec-title"><h2>每份问卷进度</h2><span class="sub">按创建时间</span></div>';
+  if (!db.surveys.length) {
+    html += '<div class="empty">还没有问卷数据</div>';
+  } else {
+    html += '<div class="card"><ul class="ledger">' + db.surveys.slice()
+      .sort(function (a, b) { return b.createdAt - a.createdAt; })
+      .map(function (s) {
+        const pct = Math.round(s.confirmed / s.target * 100);
+        return '<li><span class="n">' + esc(s.title) + '</span><span class="t">' +
+          s.confirmed + '/' + s.target + ' · ' + pct + '%</span></li>';
+      }).join('') + '</ul></div>';
+  }
+
+  html += '<div class="sec-title"><h2>数据管理</h2><span class="sub">测试期工具</span></div>';
+  html += '<div class="card">' +
+    (IS_CLOUD
+      ? '<p class="tiny" style="margin-bottom:10px">云端模式：数据存在 Supabase，任何人打开这个页面看到的都是同一份数据。</p>'
+      : '<p class="tiny" style="margin-bottom:10px">本机演示模式：数据只在这台设备的浏览器里。要让别人用，请在代码顶部填上 Supabase 的 url 与 anonKey。</p>') +
+    '<div class="row"><button class="btn ghost sm" data-act="lock">锁定看板</button><span class="spacer"></span>' +
+    '<button class="btn ghost sm" data-act="reset" style="color:var(--warn);border-color:var(--warn)">清空全部数据</button></div></div>';
+  return html;
+}
+
+/* ================= 主渲染 ================= */
+function render() {
+  normalize();
+  const root = document.getElementById('view-root');
+  document.getElementById('nickLabel').textContent = me || '未设置';
+  document.getElementById('ptsLabel').innerHTML = pts(me) + '<small>点</small>';
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.classList.toggle('on', t.getAttribute('data-v') === state.view);
+  });
+  document.getElementById('dock').style.display = (!me) ? 'none' : ((state.view === 'square') ? 'block' : 'none');
+  if (!me) { root.innerHTML = welcomeView(); return; }
+  if (state.view === 'square') root.innerHTML = renderSquare();
+  else if (state.view === 'mine') root.innerHTML = renderMine();
+  else root.innerHTML = renderBoard();
+}
+
+function welcomeView() {
+  return '<div class="sec-title"><h2>起个名字</h2><span class="sub">不用实名</span></div>' +
+    '<div class="card">' +
+    '<p class="muted" style="margin-bottom:14px">昵称只用来记账，随便起。注册即送 ' + RULE.BONUS +
+      ' 点，够发第一份问卷。</p>' +
+    '<div class="field"><label>昵称</label><input id="nickInput" type="text" maxlength="12" autocomplete="off" placeholder="例如：小林"></div>' +
+    '<div class="err" id="nickErr"></div>' +
+    '<button class="btn warn" data-act="join">进入广场</button>' +
+    '<p class="hint">规则：填 1 份有效问卷 +1 点，发 1 份问卷扣 10 点。同时只开 ' + RULE.MAX_ACTIVE +
+      ' 个发布位，多出来的排队。</p>' +
+    '</div>';
+}
+
+/* ================= 弹层 ================= */
+function openPostSheet() {
+  state.modal = 'post';
+  const mask = document.createElement('div');
+  mask.className = 'mask';
+  mask.id = 'mask';
+  mask.innerHTML =
+    '<div class="sheet">' +
+    '<h3>发布我的问卷</h3>' +
+    '<p class="lead">扣 ' + RULE.COST + ' 点。当前余额 ' + pts(me) + ' 点。</p>' +
+    '<div class="err" id="formErr"></div>' +
+    '<div class="field"><label>问卷名</label><input id="fTitle" type="text" maxlength="40" placeholder="例如：大学生短视频使用与睡眠调查"></div>' +
+    '<div class="field"><label>问卷链接<span>腾讯问卷、问卷星、金数据都行</span></label><input id="fUrl" type="url" placeholder="https://"></div>' +
+    '<div class="grid2">' +
+    '<div class="field"><label>题数<span>最多 20</span></label><input id="fQn" type="number" min="1" max="20" value="15"></div>' +
+    '<div class="field"><label>预计用时<span>分钟，最多 5</span></label><input id="fMins" type="number" min="1" max="5" value="4"></div>' +
+    '</div>' +
+    '<div class="grid2">' +
+    '<div class="field"><label>目标份数</label><input id="fTarget" type="number" min="5" max="200" value="30"></div>' +
+    '<div class="field"><label>截止日期</label><input id="fDeadline" type="date" value="' + isoPlusDays(7) + '"></div>' +
+    '</div>' +
+    '<p class="hint">不受理：超过 20 题、超过 5 分钟、没有截止日期的问卷。发布后由你逐份确认答卷是否有效。</p>' +
+    '<div class="row" style="margin-top:16px"><button class="btn ghost" data-act="close-modal">取消</button>' +
+    '<span class="spacer"></span><button class="btn warn" data-act="submit-post">确认发布</button></div>' +
+    '</div>';
+  document.body.appendChild(mask);
+  const t = document.getElementById('fTitle');
+  if (t) t.focus();
+}
+
+function closeModal() {
+  const m = document.getElementById('mask');
+  if (m) m.remove();
+  state.modal = null;
+}
+
+/* ================= 提示 ================= */
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.classList.remove('on'); }, 2400);
+}
+
+async function run(task) {
+  try { return await task(); }
+  catch (err) { toast('同步失败：' + (err && err.message ? err.message : '网络异常')); return null; }
+}
+
+/* ================= 事件 ================= */
+document.addEventListener('click', async function (e) {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.getAttribute('data-act');
+
+  if (act === 'view') {
+    state.view = el.getAttribute('data-v');
+    render();
+    return;
+  }
+  if (act === 'join') {
+    const v = document.getElementById('nickInput').value;
+    const r = await run(function () { return ensureUser(v); });
+    if (!r) return;
+    if (!r.ok) {
+      const err = document.getElementById('nickErr');
+      err.textContent = r.msg;
+      err.classList.add('on');
+      return;
+    }
+    toast('已进入，赠 ' + RULE.BONUS + ' 点');
+    render();
+    return;
+  }
+  if (act === 'open-post') {
+    if (!me) { toast('先设置昵称'); return; }
+    if (pts(me) < RULE.COST) { toast('点数不足：填 1 份有效问卷得 1 点，攒够 10 点再发'); return; }
+    openPostSheet();
+    return;
+  }
+  if (act === 'close-modal') { closeModal(); return; }
+  if (act === 'submit-post') {
+    const f = {
+      title: document.getElementById('fTitle').value,
+      url: document.getElementById('fUrl').value,
+      qn: document.getElementById('fQn').value,
+      mins: document.getElementById('fMins').value,
+      target: document.getElementById('fTarget').value,
+      deadline: document.getElementById('fDeadline').value
+    };
+    const r = await run(function () { return createSurvey(f); });
+    if (!r) return;
+    if (!r.ok) {
+      const err = document.getElementById('formErr');
+      err.textContent = r.msg;
+      err.classList.add('on');
+      return;
+    }
+    closeModal();
+    toast(r.queued ? '已发布，当前满位，排队中' : '已发布，正在收答卷');
+    render();
+    return;
+  }
+  if (act === 'take') {
+    if (!me) { toast('先设置昵称'); return; }
+    const r = await run(function () { return takeSurvey(el.getAttribute('data-sid')); });
+    if (!r) return;
+    if (!r.ok) { toast(r.msg); return; }
+    toast('已认领，打开链接填写后回来提交');
+    render();
+    return;
+  }
+  if (act === 'filled') {
+    const r = await run(function () { return markFilled(el.getAttribute('data-sid')); });
+    if (!r) return;
+    toast(r.ok ? '已提交，等发布方确认后到账' : r.msg);
+    render();
+    return;
+  }
+  if (act === 'confirm') {
+    const r = await run(function () { return confirmClaim(el.getAttribute('data-cid')); });
+    if (!r) return;
+    toast(r.ok ? '已确认，' + r.nick + ' +1 点' : r.msg);
+    render();
+    return;
+  }
+  if (act === 'reject') {
+    const r = await run(function () { return rejectClaim(el.getAttribute('data-cid')); });
+    if (!r) return;
+    toast(r.ok ? '已判为无效' : r.msg);
+    render();
+    return;
+  }
+  if (act === 'unlock') {
+    const v = (document.getElementById('passInput').value || '').trim();
+    if (v !== RULE.PASS) {
+      const err = document.getElementById('passErr');
+      err.classList.add('on');
+      return;
+    }
+    state.boardOpen = true;
+    render();
+    return;
+  }
+  if (act === 'lock') { state.boardOpen = false; render(); return; }
+  if (act === 'reset') {
+    if (!confirm('清空全部问卷、认领与点数记录？此操作不可撤销。')) return;
+    db = blankDB();
+    save();
+    me = '';
+    localStorage.removeItem(ME_KEY);
+    state.boardOpen = false;
+    state.view = 'square';
+    render();
+    toast('已清空');
+    return;
+  }
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter') return;
+  const active = document.activeElement;
+  if (active && active.id === 'nickInput') {
+    const b = document.querySelector('[data-act="join"]');
+    if (b) b.click();
+  }
+  if (active && active.id === 'fUrl') {
+    const b = document.querySelector('[data-act="submit-post"]');
+    if (b) b.click();
+  }
+});
+
+(async function boot() {
+  if (IS_CLOUD) {
+    try {
+      await loadCloud();
+    } catch (err) {
+      alert('云端数据加载失败：' + (err && err.message ? err.message : '网络异常') + '\n请检查 CLOUD.url 与 anonKey 是否填对，以及四张数据表是否已创建。');
+    }
+    /* 本机记住的昵称如果在云端不存在（例如换了数据库），就回到起名页 */
+    if (me && db.users.indexOf(me) < 0) {
+      me = null;
+      localStorage.removeItem(ME_KEY);
+    }
+  }
+  render();
+})();
+</script>
+</body>
+</html>
